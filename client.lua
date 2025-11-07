@@ -1,14 +1,12 @@
 local cooldownActive = false
 local cooldownEnd = 0
-local systemEnabled = true
-local excludedJobs = { 'police', 'ambulance' } -- jobs immune to cooldown
 
--- Qbox uses this event when player dies
+-- Detect player death
 RegisterNetEvent('baseevents:onPlayerDied', function()
     TriggerServerEvent('hostile_cooldown:playerDied')
 end)
 
--- Draws timer text on screen
+-- Draw text on top of screen
 local function DrawTextTopCenter(text)
     SetTextFont(4)
     SetTextProportional(0)
@@ -21,7 +19,7 @@ local function DrawTextTopCenter(text)
     EndTextCommandDisplayText(0.5, 0.05)
 end
 
--- Main cooldown handler
+-- Handle cooldown visuals & restriction
 CreateThread(function()
     while true do
         Wait(0)
@@ -29,7 +27,11 @@ CreateThread(function()
             local remaining = math.floor(cooldownEnd - GetGameTimer() / 1000)
             if remaining <= 0 then
                 cooldownActive = false
-                lib.notify({ title = 'Cooldown Ended', description = 'You may now engage in combat.', type = 'success' })
+                lib.notify({
+                    title = 'Cooldown Ended',
+                    description = 'You may now engage in combat.',
+                    type = 'success'
+                })
             else
                 DrawTextTopCenter(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining))
                 DisableControlAction(0, 24, true) -- attack
@@ -44,9 +46,13 @@ CreateThread(function()
     end
 end)
 
--- Start cooldown from server
+-- Start cooldown
 RegisterNetEvent('hostile_cooldown:start', function(duration)
     cooldownActive = true
     cooldownEnd = GetGameTimer() / 1000 + duration
-    lib.notify({ title = 'Hostile Cooldown', description = ('You must wait %s minutes before fighting again.'):format(duration/60), type = 'error' })
+    lib.notify({
+        title = 'Hostile Cooldown',
+        description = ('You must wait %s minutes before engaging in combat.'):format(duration / 60),
+        type = 'error'
+    })
 end)
