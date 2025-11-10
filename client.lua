@@ -2,15 +2,53 @@ local cooldownActive = false
 local cooldownEnd = 0
 local showingBanner = false
 
+-- Quick startup debug - will print to the client's F8 console if Config.Debug is true
+CreateThread(function()
+    Wait(1000)
+    if Config and Config.Debug then
+        local sid = GetPlayerServerId(PlayerId())
+        print(("^6[HostileCooldown]^7 Client startup: Config.Debug=%s | player_server_id=%s | resource=%s"):format(tostring(Config.Debug), tostring(sid), GetCurrentResourceName()))
+    end
+end)
+
+-- Debug command: force-send a death notification to the server (use in F8)
+RegisterCommand('hc_testdie', function()
+    if Config and Config.Debug then
+        local sid = GetPlayerServerId(PlayerId())
+        print(("^6[HostileCooldown]^7 hc_testdie invoked locally (player_server_id=%s), sending server event"):format(tostring(sid)))
+    end
+    TriggerServerEvent('hostile_cooldown:playerDied')
+end, false)
+
+-- Debug command: force-start the cooldown locally (use in F8)
+RegisterCommand('hc_teststart', function()
+    if Config and Config.Debug then
+        local sid = GetPlayerServerId(PlayerId())
+        print(("^6[HostileCooldown]^7 hc_teststart invoked locally (player_server_id=%s), starting local cooldown"):format(tostring(sid)))
+    end
+    -- Config.CooldownTime is minutes; pass seconds to the event handler
+    TriggerEvent('hostile_cooldown:start', (Config.CooldownTime or 0) * 60)
+end, false)
+
 -- Handle player death / revival depending on config
 if Config.UseWasabiAmbulance then
     RegisterNetEvent('wasabi_ambulance:revive', function(adminRevive)
         if not adminRevive then
+            if Config.Debug then
+                local sid = GetPlayerServerId(PlayerId())
+                local name = GetPlayerName(PlayerId())
+                print(("^6[HostileCooldown]^7 Detected local death, notifying server (id=%s, name=%s)"):format(sid, name))
+            end
             TriggerServerEvent('hostile_cooldown:playerDied')
         end
     end)
 else
     RegisterNetEvent('baseevents:onPlayerDied', function()
+        if Config.Debug then
+            local sid = GetPlayerServerId(PlayerId())
+            local name = GetPlayerName(PlayerId())
+            print(("^6[HostileCooldown]^7 Detected local death, notifying server (id=%s, name=%s)"):format(sid, name))
+        end
         TriggerServerEvent('hostile_cooldown:playerDied')
     end)
 end
@@ -45,6 +83,10 @@ CreateThread(function()
                     description = 'You may now engage in combat.',
                     type = 'success'
                 })
+                    if Config.Debug then
+                        local sid = GetPlayerServerId(PlayerId())
+                        print(("^6[HostileCooldown]^7 Cooldown ended for player %s"):format(sid))
+                    end
             else
                 if Config.UseTopBanner then
                     if not showingBanner then
@@ -91,4 +133,8 @@ RegisterNetEvent('hostile_cooldown:start', function(duration)
         description = ('You must wait %s minutes before engaging in combat.'):format(duration / 60),
         type = 'error'
     })
+    if Config.Debug then
+        local sid = GetPlayerServerId(PlayerId())
+        print(("^6[HostileCooldown]^7 Cooldown started for player %s (duration=%s seconds, ends_at=%s)"):format(sid, tostring(duration), tostring(cooldownEnd)))
+    end
 end)
