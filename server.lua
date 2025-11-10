@@ -26,6 +26,30 @@ lib.addCommand('togglecooldown', {
     print(('[HostileCooldown] System %s by %s'):format(state, GetPlayerName(source)))
 end)
 
+lib.addCommand('removecooldown', {
+    help = 'Remove hostile cooldown for a player by ID',
+    restricted = Config.AdminPermission
+}, function(source, args)
+    local target = tonumber(args[1])
+    if not target then
+        TriggerClientEvent('ox_lib:notify', source, {
+            title = 'Cooldown System',
+            description = 'Usage: /removecooldown {playerId}',
+            type = 'error'
+        })
+        return
+    end
+    TriggerClientEvent('hostile_cooldown:start', target, 0)
+    TriggerClientEvent('ox_lib:notify', source, {
+        title = 'Cooldown System',
+        description = ('Cooldown removed for player %s'):format(target),
+        type = 'success'
+    })
+    if Config.Debug then
+        print(("^6[HostileCooldown]^7 /removecooldown used by %s for target %s"):format(source, target))
+    end
+end)
+
 RegisterNetEvent('hostile_cooldown:playerDied', function()
     local src = source
     if Config.Debug then
