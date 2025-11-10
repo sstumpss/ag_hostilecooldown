@@ -14,3 +14,5 @@ server_scripts {
     'version_checker.lua',
     'server.lua'
 }
+
+server_export 'RemoveCooldown'

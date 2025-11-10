@@ -113,3 +113,21 @@ RegisterCommand('hc_trigger', function(source, args)
     -- Send seconds to the client
     TriggerClientEvent('hostile_cooldown:start', target, (Config.CooldownTime or 0) * 60)
 end, true)
+
+-- Export: Remove cooldown for a player (usage: exports['ag_hostilecooldown']:RemoveCooldown(playerId))
+exports('RemoveCooldown', function(playerId)
+    if not playerId or type(playerId) ~= 'number' then
+        if Config.Debug then
+            print("^3[HostileCooldown]^7 RemoveCooldown export called with invalid playerId")
+        end
+        return false
+    end
+    
+    TriggerClientEvent('hostile_cooldown:start', playerId, 0)
+    
+    if Config.Debug then
+        print(("^6[HostileCooldown]^7 RemoveCooldown export called for player %s"):format(playerId))
+    end
+    
+    return true
+end)
