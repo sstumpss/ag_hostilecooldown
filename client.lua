@@ -31,23 +31,43 @@ RegisterCommand('hc_teststart', function()
 end, false)
 
 -- Handle player death / revival depending on config
+-- Death event hook selection
+-- Wasabi ambulance emits `wasabi_bridge:onPlayerDeath` when a player dies.
+-- The previous implementation incorrectly listened to `wasabi_ambulance:revive`, which fires on revive not death.
+local lastDeathSent = 0
+local DEATH_DEBOUNCE_MS = 3000 -- avoid duplicate sends in quick succession
+
 if Config.UseWasabiAmbulance then
-    RegisterNetEvent('wasabi_ambulance:revive', function(adminRevive)
-        if not adminRevive then
+    AddEventHandler('wasabi_bridge:onPlayerDeath', function(data)
+        local now = GetGameTimer()
+        if now - lastDeathSent < DEATH_DEBOUNCE_MS then
             if Config.Debug then
-                local sid = GetPlayerServerId(PlayerId())
-                local name = GetPlayerName(PlayerId())
-                print(("^6[HostileCooldown]^7 Detected local death, notifying server (id=%s, name=%s)"):format(sid, name))
+                print('^6[HostileCooldown]^7 Skipping duplicate death event (debounced)')
             end
-            TriggerServerEvent('hostile_cooldown:playerDied')
+            return
         end
-    end)
-else
-    RegisterNetEvent('baseevents:onPlayerDied', function()
+        lastDeathSent = now
         if Config.Debug then
             local sid = GetPlayerServerId(PlayerId())
             local name = GetPlayerName(PlayerId())
-            print(("^6[HostileCooldown]^7 Detected local death, notifying server (id=%s, name=%s)"):format(sid, name))
+            print(("^6[HostileCooldown]^7 Detected death via wasabi_bridge:onPlayerDeath, notifying server (id=%s, name=%s)"):format(sid, name))
+        end
+        TriggerServerEvent('hostile_cooldown:playerDied')
+    end)
+else
+    RegisterNetEvent('baseevents:onPlayerDied', function()
+        local now = GetGameTimer()
+        if now - lastDeathSent < DEATH_DEBOUNCE_MS then
+            if Config.Debug then
+                print('^6[HostileCooldown]^7 Skipping duplicate baseevents death (debounced)')
+            end
+            return
+        end
+        lastDeathSent = now
+        if Config.Debug then
+            local sid = GetPlayerServerId(PlayerId())
+            local name = GetPlayerName(PlayerId())
+            print(("^6[HostileCooldown]^7 Detected local death (baseevents), notifying server (id=%s, name=%s)"):format(sid, name))
         end
         TriggerServerEvent('hostile_cooldown:playerDied')
     end)
