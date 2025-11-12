@@ -13,7 +13,7 @@ Config.ExcludedJobs = { 'police', 'ambulance' }
 Config.AdminPermission = 'group.god'
 
 -- 🏥 Integration
-Config.UseWasabiAmbulance = false -- set to false if not using wasabi_ambulance
+Config.UseWasabiAmbulance = true -- set to false if not using wasabi_ambulance
 
 -- 🧩 UI
 Config.UseTopBanner = true -- enables ox_lib progress-style banner
