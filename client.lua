@@ -30,28 +30,61 @@ RegisterCommand('hc_teststart', function()
     TriggerEvent('hostile_cooldown:start', (Config.CooldownTime or 0) * 60)
 end, false)
 
--- Handle player death / revival depending on config
-if Config.UseWasabiAmbulance then
-    RegisterNetEvent('wasabi_ambulance:revive', function(adminRevive)
-        if not adminRevive then
-            if Config.Debug then
-                local sid = GetPlayerServerId(PlayerId())
-                local name = GetPlayerName(PlayerId())
-                print(("^6[HostileCooldown]^7 Detected local death, notifying server (id=%s, name=%s)"):format(sid, name))
+-- Lightweight paintball detection function (from sasha's script)
+local function IsInPaintballMatch()
+    -- Check all configured paintball resources
+    for _, resourceName in ipairs(Config.PaintballResources) do
+        if GetResourceState(resourceName) == 'started' then
+            -- Try different export methods for different paintball scripts
+            if resourceName == 'pug-paintball' then
+                local success, result = pcall(function()
+                    return exports['pug-paintball']:IsInPaintball()
+                end)
+                if success and result then
+                    return true
+                end
+            elseif resourceName == 'nass_paintball' then
+                local success, result = pcall(function()
+                    return exports['nass_paintball']:inGame()
+                end)
+                if success and result then
+                    return true
+                end
             end
-            TriggerServerEvent('hostile_cooldown:playerDied')
         end
-    end)
-else
-    RegisterNetEvent('baseevents:onPlayerDied', function()
-        if Config.Debug then
-            local sid = GetPlayerServerId(PlayerId())
-            local name = GetPlayerName(PlayerId())
-            print(("^6[HostileCooldown]^7 Detected local death, notifying server (id=%s, name=%s)"):format(sid, name))
-        end
-        TriggerServerEvent('hostile_cooldown:playerDied')
-    end)
+    end
+    
+    return false
 end
+
+-- Handle player death using fallback native death detection (from sasha's script)
+local wasDead = false
+CreateThread(function()
+    while true do
+        local playerPed = PlayerPedId()
+        local isDead = IsEntityDead(playerPed)
+        
+        if isDead and not wasDead then
+            -- Check paintball status before notifying server
+            if IsInPaintballMatch() then
+                if Config.Debug then
+                    local sid = GetPlayerServerId(PlayerId())
+                    print(("^6[HostileCooldown]^7 Player %s died in paintball match - skipping cooldown"):format(sid))
+                end
+            else
+                if Config.Debug then
+                    local sid = GetPlayerServerId(PlayerId())
+                    local name = GetPlayerName(PlayerId())
+                    print(("^6[HostileCooldown]^7 Detected local death via native detection, notifying server (id=%s, name=%s)"):format(sid, name))
+                end
+                TriggerServerEvent('hostile_cooldown:playerDied')
+            end
+        end
+        
+        wasDead = isDead
+        Wait(1000) -- Check every second
+    end
+end)
 
 -- Draw fallback text at top of screen
 local function DrawTextTopCenter(text)
@@ -63,7 +96,7 @@ local function DrawTextTopCenter(text)
     SetTextOutline()
     BeginTextCommandDisplayText('STRING')
     AddTextComponentSubstringPlayerName(text)
-    EndTextCommandDisplayText(0.5, 0.05)
+    EndTextCommandDisplayText(0.5, 0.15) -- Moved down to avoid HUD conflict
 end
 
 -- Thread to manage cooldown restrictions & display
@@ -91,7 +124,7 @@ CreateThread(function()
                 if Config.UseTopBanner then
                     if not showingBanner then
                         lib.showTextUI(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining), {
-                            position = "top-center",
+                            position = "right-center", -- Changed from top-center to avoid HUD conflict
                             icon = 'clock',
                             style = { borderRadius = 8, backgroundColor = '#990000', color = 'white', fontSize = 16, padding = 8 }
                         })
@@ -101,7 +134,7 @@ CreateThread(function()
                         if GetGameTimer() % 1000 < 30 then
                             lib.hideTextUI()
                             lib.showTextUI(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining), {
-                                position = "top-center",
+                                position = "right-center", -- Changed from top-center to avoid HUD conflict
                                 icon = 'clock',
                                 style = { borderRadius = 8, backgroundColor = '#990000', color = 'white', fontSize = 16, padding = 8 }
                             })

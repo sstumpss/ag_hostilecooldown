@@ -3,6 +3,7 @@ local systemEnabled = true
 -- Quick startup debug - will print to the server console if Config.Debug is true
 if Config and Config.Debug then
     print(("^6[HostileCooldown]^7 Startup: Config.Debug=%s | resource=%s"):format(tostring(Config.Debug), GetCurrentResourceName()))
+    print(("^6[HostileCooldown]^7 Server event 'hostile_cooldown:playerDied' is being registered"))
 end
 
 local function isJobExcluded(job)
@@ -52,9 +53,15 @@ end)
 
 RegisterNetEvent('hostile_cooldown:playerDied', function()
     local src = source
+    
+    -- Always print this regardless of Config.Debug to verify event reception
+    print(("^1[HostileCooldown]^7 ========== EVENT RECEIVED FROM PLAYER %s =========="):format(src))
+    
     if Config.Debug then
-        print(("^6[HostileCooldown]^7 Received death notification from %s (%s)"):format(src, GetPlayerName(src)))
+        print(("^6[HostileCooldown]^7 Player name: %s"):format(GetPlayerName(src)))
+        print(("^6[HostileCooldown]^7 System enabled: %s"):format(tostring(systemEnabled)))
     end
+    
     if not systemEnabled then
         if Config.Debug then
             print(("^6[HostileCooldown]^7 System disabled, ignoring death from %s"):format(src))
@@ -62,10 +69,29 @@ RegisterNetEvent('hostile_cooldown:playerDied', function()
         return
     end
 
+    if Config.Debug then
+        print(("^6[HostileCooldown]^7 Attempting to get QBX player data..."))
+    end
+
     local player = exports.qbx_core:GetPlayer(src)
-    if not player then return end
+    
+    if Config.Debug then
+        print(("^6[HostileCooldown]^7 QBX Player retrieved: %s"):format(player and "SUCCESS" or "FAILED"))
+    end
+    
+    if not player then 
+        if Config.Debug then
+            print(("^1[HostileCooldown]^7 Could not get player data for %s - skipping cooldown"):format(src))
+        end
+        return 
+    end
 
     local job = player.PlayerData.job.name
+    
+    if Config.Debug then
+        print(("^6[HostileCooldown]^7 Player %s job: %s"):format(src, job))
+    end
+    
     if isJobExcluded(job) then
         if Config.Debug then
             print(("^6[HostileCooldown]^7 Player %s has excluded job '%s' - skipping cooldown"):format(src, job))
@@ -73,25 +99,17 @@ RegisterNetEvent('hostile_cooldown:playerDied', function()
         return
     end
 
-    local inPaintball = GetResourceState("pug-paintball") == "started"
-        and exports["pug-paintball"]:IsInPaintball(src)
-    local inBattleRoyale = GetResourceState("pug-battleroyale") == "started"
-        and exports["pug-battleroyale"]:IsInBattleRoyale(src)
-    if inPaintball or inBattleRoyale then
-        if Config.Debug then
-            print(("^6[HostileCooldown]^7 Player %s is in a minigame (paintball=%s, battleroyale=%s) - skipping cooldown"):format(src, tostring(inPaintball), tostring(inBattleRoyale)))
-        end
-        return
-    end
-
+    local durationSeconds = (Config.CooldownTime or 0) * 60
+    
     if Config.Debug then
-        local durationSeconds = (Config.CooldownTime or 0) * 60
         local endsAt = os.time() + durationSeconds
         print(("^6[HostileCooldown]^7 Starting cooldown for %s (duration=%s minutes / %s seconds, ends_at=%s)"):format(src, tostring(Config.CooldownTime), tostring(durationSeconds), tostring(endsAt)))
     end
 
     -- Server stores cooldown in minutes; send seconds to clients
-    TriggerClientEvent('hostile_cooldown:start', src, (Config.CooldownTime or 0) * 60)
+    TriggerClientEvent('hostile_cooldown:start', src, durationSeconds)
+    
+    print(("^2[HostileCooldown]^7 ========== COOLDOWN TRIGGERED FOR PLAYER %s =========="):format(src))
 end)
 
 -- Server console command to trigger a cooldown for a player (usage: hc_trigger <playerId>)
