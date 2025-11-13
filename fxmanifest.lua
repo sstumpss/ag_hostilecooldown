@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'stumps'
 description 'AG Hostile Cooldown System'
-version '1.0.1'
+version '1.0.2'
 lua54 'yes'
 
 shared_script '@ox_lib/init.lua'
