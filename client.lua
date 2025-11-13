@@ -1,5 +1,5 @@
 local cooldownActive = false
-local cooldownEnd = 0
+local cooldownEndSec = 0 -- integer seconds timestamp (GameTimer/1000)
 local showingBanner = false
 
 -- Quick startup debug - will print to the client's F8 console if Config.Debug is true
@@ -101,10 +101,13 @@ end
 
 -- Thread to manage cooldown restrictions & display
 CreateThread(function()
+    local lastRemaining = -1
     while true do
-        Wait(0)
+        local sleep = 500 -- sleep more when idle
         if cooldownActive then
-            local remaining = math.floor(cooldownEnd - GetGameTimer() / 1000)
+            sleep = 0 -- per-frame while restricting controls/drawing text
+            local nowSec = math.floor(GetGameTimer() / 1000)
+            local remaining = math.max(0, cooldownEndSec - nowSec)
             if remaining <= 0 then
                 cooldownActive = false
                 if Config.UseTopBanner and showingBanner then
@@ -129,15 +132,17 @@ CreateThread(function()
                             style = { borderRadius = 8, backgroundColor = '#990000', color = 'white', fontSize = 16, padding = 8 }
                         })
                         showingBanner = true
+                        lastRemaining = remaining
                     else
-                        -- Update the banner every second
-                        if GetGameTimer() % 1000 < 30 then
+                        -- Only refresh text when the second value changes
+                        if remaining ~= lastRemaining then
                             lib.hideTextUI()
                             lib.showTextUI(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining), {
-                                position = "right-center", -- Changed from top-center to avoid HUD conflict
+                                position = "right-center",
                                 icon = 'clock',
                                 style = { borderRadius = 8, backgroundColor = '#990000', color = 'white', fontSize = 16, padding = 8 }
                             })
+                            lastRemaining = remaining
                         end
                     end
                 else
@@ -154,20 +159,41 @@ CreateThread(function()
                 DisablePlayerFiring(PlayerId(), true)
             end
         end
+        Wait(sleep)
     end
 end)
 
 -- Start cooldown handler
 RegisterNetEvent('hostile_cooldown:start', function(duration)
+    -- Treat zero/negative duration as a request to clear the cooldown cleanly
+    if duration == nil or duration <= 0 then
+        cooldownActive = false
+        cooldownEndSec = 0
+        if Config.UseTopBanner and showingBanner then
+            lib.hideTextUI()
+            showingBanner = false
+        end
+        lib.notify({
+            title = 'Cooldown Removed',
+            description = 'Your hostile cooldown has been cleared.',
+            type = 'inform'
+        })
+        if Config.Debug then
+            local sid = GetPlayerServerId(PlayerId())
+            print(("^6[HostileCooldown]^7 Cooldown cleared for player %s"):format(sid))
+        end
+        return
+    end
+
     cooldownActive = true
-    cooldownEnd = GetGameTimer() / 1000 + duration
+    cooldownEndSec = math.floor(GetGameTimer() / 1000) + duration
     lib.notify({
         title = 'Hostile Cooldown',
-        description = ('You must wait %s minutes before engaging in combat.'):format(duration / 60),
+        description = ('You must wait %s minutes before engaging in combat.'):format(math.ceil(duration / 60)),
         type = 'error'
     })
     if Config.Debug then
         local sid = GetPlayerServerId(PlayerId())
-        print(("^6[HostileCooldown]^7 Cooldown started for player %s (duration=%s seconds, ends_at=%s)"):format(sid, tostring(duration), tostring(cooldownEnd)))
+        print(("^6[HostileCooldown]^7 Cooldown started for player %s (duration=%s seconds, ends_at=%s)"):format(sid, tostring(duration), tostring(cooldownEndSec)))
     end
 end)

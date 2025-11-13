@@ -53,11 +53,8 @@ end)
 
 RegisterNetEvent('hostile_cooldown:playerDied', function()
     local src = source
-    
-    -- Always print this regardless of Config.Debug to verify event reception
-    print(("^1[HostileCooldown]^7 ========== EVENT RECEIVED FROM PLAYER %s =========="):format(src))
-    
     if Config.Debug then
+        print(("^1[HostileCooldown]^7 ========== EVENT RECEIVED FROM PLAYER %s =========="):format(src))
         print(("^6[HostileCooldown]^7 Player name: %s"):format(GetPlayerName(src)))
         print(("^6[HostileCooldown]^7 System enabled: %s"):format(tostring(systemEnabled)))
     end
@@ -109,41 +106,10 @@ RegisterNetEvent('hostile_cooldown:playerDied', function()
     -- Server stores cooldown in minutes; send seconds to clients
     TriggerClientEvent('hostile_cooldown:start', src, durationSeconds)
     
-    print(("^2[HostileCooldown]^7 ========== COOLDOWN TRIGGERED FOR PLAYER %s =========="):format(src))
-end)
-
--- Helper to evaluate and start cooldown (shared by multiple death sources)
-local function startCooldownFor(src)
-    if not systemEnabled then return end
-    local player = exports.qbx_core:GetPlayer(src)
-    if not player then return end
-    local job = player.PlayerData.job.name
-    if isJobExcluded(job) then return end
-    local inPaintball = GetResourceState("pug-paintball") == "started" and exports["pug-paintball"]:IsInPaintball(src)
-    local inBattleRoyale = GetResourceState("pug-battleroyale") == "started" and exports["pug-battleroyale"]:IsInBattleRoyale(src)
-    if inPaintball or inBattleRoyale then return end
     if Config.Debug then
-        print(("^6[HostileCooldown]^7 startCooldownFor invoked for %s"):format(src))
+        print(("^2[HostileCooldown]^7 ========== COOLDOWN TRIGGERED FOR PLAYER %s =========="):format(src))
     end
-    TriggerClientEvent('hostile_cooldown:start', src, (Config.CooldownTime or 0) * 60)
-end
-
--- Wasabi Ambulance integration: listen to death status changes server-side instead of client revive
-if Config.UseWasabiAmbulance and GetResourceState('wasabi_ambulance') == 'started' then
-    AddEventHandler('wasabi_ambulance:setDeathStatus', function(isDead)
-        local src = source
-        if isDead then
-            if Config.Debug then
-                print(("^6[HostileCooldown]^7 Detected wasabi death for %s; applying cooldown"):format(src))
-            end
-            startCooldownFor(src)
-        else
-            if Config.Debug then
-                print(("^6[HostileCooldown]^7 Wasabi death status cleared for %s; no action"):format(src))
-            end
-        end
-    end)
-end
+end)
 
 -- Server console command to trigger a cooldown for a player (usage: hc_trigger <playerId>)
 RegisterCommand('hc_trigger', function(source, args)
