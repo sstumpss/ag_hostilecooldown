@@ -13,29 +13,53 @@ local function isJobExcluded(job)
     return false
 end
 
-lib.addCommand('togglecooldown', {
-    help = 'Toggle hostile cooldown system on/off',
-    restricted = Config.AdminPermission
-}, function(source)
-    systemEnabled = not systemEnabled
-    local state = systemEnabled and 'enabled' or 'disabled'
+lib.addCommand('hc_togglecooldown', {
+    help = 'Toggle hostile cooldown system on/off for the entire server',
+    restricted = Config.AdminPermission,
+    params = {
+        {
+            name = 'state',
+            type = 'string',
+            help = 'on or off (optional - toggles if not specified)'
+        }
+    }
+}, function(source, args)
+    local state = args.state and args.state:lower()
+    
+    if state == 'on' then
+        systemEnabled = true
+    elseif state == 'off' then
+        systemEnabled = false
+    else
+        -- Toggle if no argument or invalid argument
+        systemEnabled = not systemEnabled
+    end
+    
+    local stateText = systemEnabled and 'enabled' or 'disabled'
     TriggerClientEvent('ox_lib:notify', source, {
         title = 'Cooldown System',
-        description = 'Cooldown ' .. state,
+        description = 'Cooldown system ' .. stateText .. ' for the entire server',
         type = 'inform'
     })
-    print(('[HostileCooldown] System %s by %s'):format(state, GetPlayerName(source)))
+    print(('[HostileCooldown] System %s by %s'):format(stateText, GetPlayerName(source)))
 end)
 
-lib.addCommand('removecooldown', {
-    help = 'Remove hostile cooldown for a player by ID',
-    restricted = Config.AdminPermission
+lib.addCommand('hc_removecooldown', {
+    help = 'Remove hostile cooldown for a specific player',
+    restricted = Config.AdminPermission,
+    params = {
+        {
+            name = 'playerId',
+            type = 'number',
+            help = 'The server ID of the player to remove cooldown from'
+        }
+    }
 }, function(source, args)
-    local target = tonumber(args[1])
+    local target = args.playerId
     if not target then
         TriggerClientEvent('ox_lib:notify', source, {
             title = 'Cooldown System',
-            description = 'Usage: /removecooldown {playerId}',
+            description = 'Usage: /hc_removecooldown [playerId]',
             type = 'error'
         })
         return
@@ -47,7 +71,7 @@ lib.addCommand('removecooldown', {
         type = 'success'
     })
     if Config.Debug then
-        print(("^6[HostileCooldown]^7 /removecooldown used by %s for target %s"):format(source, target))
+        print(("^6[HostileCooldown]^7 /hc_removecooldown used by %s for target %s"):format(source, target))
     end
 end)
 
