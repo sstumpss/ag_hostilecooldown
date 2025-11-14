@@ -107,8 +107,9 @@ CreateThread(function()
         if cooldownActive then
             sleep = 0 -- per-frame while restricting controls/drawing text
             local nowSec = math.floor(GetGameTimer() / 1000)
-            local remaining = math.max(0, cooldownEndSec - nowSec)
-            if remaining <= 0 then
+            local remainingSec = math.max(0, cooldownEndSec - nowSec)
+            local remainingMin = math.ceil(remainingSec / 60)
+            if remainingSec <= 0 then
                 cooldownActive = false
                 if Config.UseTopBanner and showingBanner then
                     lib.hideTextUI()
@@ -126,27 +127,27 @@ CreateThread(function()
             else
                 if Config.UseTopBanner then
                     if not showingBanner then
-                        lib.showTextUI(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining), {
+                        lib.showTextUI(("🕒 Hostile Cooldown: %s minute%s remaining"):format(remainingMin, remainingMin == 1 and "" or "s"), {
                             position = "right-center", -- Changed from top-center to avoid HUD conflict
                             icon = 'clock',
                             style = { borderRadius = 8, backgroundColor = '#990000', color = 'white', fontSize = 16, padding = 8 }
                         })
                         showingBanner = true
-                        lastRemaining = remaining
+                        lastRemaining = remainingMin
                     else
-                        -- Only refresh text when the second value changes
-                        if remaining ~= lastRemaining then
+                        -- Only refresh text when the minute value changes
+                        if remainingMin ~= lastRemaining then
                             lib.hideTextUI()
-                            lib.showTextUI(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining), {
+                            lib.showTextUI(("🕒 Hostile Cooldown: %s minute%s remaining"):format(remainingMin, remainingMin == 1 and "" or "s"), {
                                 position = "right-center",
                                 icon = 'clock',
                                 style = { borderRadius = 8, backgroundColor = '#990000', color = 'white', fontSize = 16, padding = 8 }
                             })
-                            lastRemaining = remaining
+                            lastRemaining = remainingMin
                         end
                     end
                 else
-                    DrawTextTopCenter(("🕒 Hostile Cooldown: %s seconds remaining"):format(remaining))
+                    DrawTextTopCenter(("🕒 Hostile Cooldown: %s minute%s remaining"):format(remainingMin, remainingMin == 1 and "" or "s"))
                 end
 
                 -- Disable combat controls
