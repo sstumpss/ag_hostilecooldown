@@ -20,22 +20,35 @@ lib.addCommand('hc_togglecooldown', {
         {
             name = 'state',
             type = 'string',
-            help = 'on or off (optional - toggles if not specified)'
+            help = 'Must be either "on" or "off"'
         }
     }
 }, function(source, args)
     local state = args.state and args.state:lower()
     
-    if state == 'on' then
-        systemEnabled = true
-    elseif state == 'off' then
-        systemEnabled = false
-    else
-        -- Toggle if no argument or invalid argument
-        systemEnabled = not systemEnabled
+    if state ~= 'on' and state ~= 'off' then
+        TriggerClientEvent('ox_lib:notify', source, {
+            title = 'Cooldown System',
+            description = 'Usage: /hc_togglecooldown [on/off]',
+            type = 'error'
+        })
+        return
     end
     
+    systemEnabled = (state == 'on')
     local stateText = systemEnabled and 'enabled' or 'disabled'
+    
+    -- If turning off, remove all active cooldowns
+    if not systemEnabled then
+        local players = GetPlayers()
+        for _, playerId in ipairs(players) do
+            TriggerClientEvent('hostile_cooldown:start', tonumber(playerId), 0)
+        end
+        if Config.Debug then
+            print(("^6[HostileCooldown]^7 Cleared all active cooldowns (system disabled by %s)"):format(GetPlayerName(source)))
+        end
+    end
+    
     TriggerClientEvent('ox_lib:notify', source, {
         title = 'Cooldown System',
         description = 'Cooldown system ' .. stateText .. ' for the entire server',
