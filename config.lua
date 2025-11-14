@@ -4,7 +4,7 @@ Config = {}
 Config.CheckForUpdates = true
 Config.RepoUrl = "https://github.com/sstumpss/ag_hostilecooldown"
 -- Enable debug logging for the update checker (prints extra info to server console)
-Config.Debug = true
+Config.Debug = false
 
 -- ⚙️ Hostile Cooldown Settings
 -- NOTE: This value is now in minutes. The server will convert to seconds when sending to clients.
